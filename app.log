@@ -1,0 +1,17 @@
+2025-08-20 20:49:54 | INFO | __main__ | Reading latest Yelp email...
+2025-08-20 20:49:54 | ERROR | gmail_reader | Error while fetching emails: 'NoneType' object has no attribute 'replace'
+Traceback (most recent call last):
+  File "/workspace/gmail_reader.py", line 59, in fetch_latest_email
+    mail.login(EMAIL, APP_PASSWORD)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/imaplib.py", line 619, in login
+    typ, dat = self._simple_command('LOGIN', user, self._quote(password))
+                                                   ~~~~~~~~~~~^^^^^^^^^^
+  File "/usr/lib/python3.13/imaplib.py", line 1231, in _quote
+    arg = arg.replace('\\', '\\\\')
+          ^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'replace'
+2025-08-20 20:49:54 | WARNING | __main__ | Email not found or no matching content.
+2025-08-20 20:50:27 | INFO | __main__ | Reading latest Yelp email...
+2025-08-20 20:50:27 | WARNING | gmail_reader | EMAIL_ADDRESS or EMAIL_APP_PASSWORD is not set in environment. Skipping IMAP fetch.
+2025-08-20 20:50:27 | WARNING | __main__ | Email not found or no matching content.
