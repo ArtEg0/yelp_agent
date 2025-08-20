@@ -1,31 +1,68 @@
 import re
+from typing import Optional
 
-def extract_details(text):
+from logger import get_logger
+from models import LeadDetails
+
+logger = get_logger(__name__)
+
+
+def _extract_name(text: str) -> Optional[str]:
+    # Try several patterns that appear across various Yelp formats
+    patterns = [
+        r"^([A-Z][a-zA-Z\-']+)\s+[A-Z][a-zA-Z\-']+\srequested",  # "John M requested"
+        r"^([A-Z][a-zA-Z\-']+)\srequested",  # "John requested"
+        r"Name:\s*([A-Za-z][A-Za-z\-']+)",
+        r"^From:\s*([A-Za-z][A-Za-z\-']+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.MULTILINE)
+        if match:
+            return match.group(1)
+    return None
+
+
+def _extract_zip(text: str) -> Optional[str]:
+    match = re.search(r"\b(?:ZIP|Zip|Postal)\s*Code:?\s*(\d{5})(?:-\d{4})?\b", text)
+    if match:
+        return match.group(1)
+    # Try common pattern like "Los Angeles, CA 90012"
+    match = re.search(r"\bCA\s*(\d{5})\b", text)
+    return match.group(1) if match else None
+
+
+def _extract_when(text: str) -> Optional[str]:
+    # Look for natural words like Today/Tomorrow/This weekend, or a date
+    match = re.search(r"Availability:?\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)", text)
+    if match:
+        return match.group(1)
+    match = re.search(r"Preferred\s*date:?\s*([A-Za-z0-9,\-/ ]+)", text)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def _extract_move_type(text: str) -> str:
+    if re.search(r"In-?state\s*moving", text, flags=re.IGNORECASE):
+        return "in-state"
+    if re.search(r"Local\s*moving", text, flags=re.IGNORECASE):
+        return "local"
+    if re.search(r"Long\s*distance", text, flags=re.IGNORECASE):
+        return "long-distance"
+    return "moving"
+
+
+def extract_details(text: Optional[str]) -> LeadDetails:
     if not text or not isinstance(text, str):
-        return {
-            "name": "Client",
-            "zip": "Unknown",
-            "when": "Unknown",
-            "type": "moving"
-        }
+        return LeadDetails()
 
     try:
-        name_match = re.search(r"([A-Z][a-z]+)\sM\.\srequested", text)
-        zip_match = re.search(r"ZIP Code:\s*(\d{5})", text)
-        when_match = re.search(r"Availability:\s*([A-Za-z]+)", text)
-        move_type = "in-state" if "In-state moving" in text else "moving"
+        name = _extract_name(text) or "Client"
+        zip_code = _extract_zip(text)
+        when = _extract_when(text)
+        move_type = _extract_move_type(text)
 
-        return {
-            "name": name_match.group(1) if name_match else "Client",
-            "zip": zip_match.group(1) if zip_match else "Unknown",
-            "when": when_match.group(1) if when_match else "Unknown",
-            "type": move_type
-        }
-    except Exception as e:
-        print("❗ Ошибка в парсинге письма:", e)
-        return {
-            "name": "Client",
-            "zip": "Unknown",
-            "when": "Unknown",
-            "type": "moving"
-        }
+        return LeadDetails(name=name, zip_code=zip_code, when=when, move_type=move_type)
+    except Exception as error:
+        logger.exception("Parsing error: %s", error)
+        return LeadDetails()
